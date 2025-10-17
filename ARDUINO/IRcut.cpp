@@ -1,5 +1,16 @@
 #include <Arduino.h>
+#include "IRcut.h"
+#include "FND.h"
 #include "DEBUG.h"
+#include "ANALOG.h"
+///////////////////////
+
+//////////////////////
+fnd display(13, 12, 11);
+debug dbg(9600);
+analog temp(A0);
+
+
 //_____________________________________________________________________________________________________________________________________________________________________
 
 /**
@@ -8,8 +19,8 @@
  * @param param2 Description of second parameter
  * @return Description of return value
  */
-debug::debug(double BaudRate){
-  baud_rate=BaudRate;
+ircut::ircut(){
+  
 }
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
@@ -18,19 +29,18 @@ debug::debug(double BaudRate){
  * @param param2 Description of second parameter
  * @return Description of return value
  */
-void debug::begin(void){
-    Serial.begin(baud_rate); 
+void ircut::begin(void){
+      // temp.begin();
+  dbg.begin();
+  display.begin();
 }
 //_____________________________________________________________________________________________________________________________________________________________________
-void debug::show(String msg){
-
-  Serial.println(msg);
-
-}
+  void ircut::FSM_Handler(void){
+    int val=temp.GetValue();
+    dbg.show(val);
+    delay(100); // Update every 100ms
+  }
 //_____________________________________________________________________________________________________________________________________________________________________
-void debug::show(int val){
 
-  Serial.println(val);
 
-}
-//_____________________________________________________________________________________________________________________________________________________________________
+
