@@ -3,12 +3,15 @@
 //////////////////////
 class button
 {
-    public:
-           button();
-      void init(char pin);
-      bool pressed();
     private:
-    char sw_pin;
+    char pin;
+
+    public:
+      button(char pin);
+      void begin(void);
+      bool pressed(void);
+      bool triggered(void);
+ 
 };
 ///////////////////////
 

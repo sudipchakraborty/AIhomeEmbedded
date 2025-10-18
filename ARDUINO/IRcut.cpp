@@ -3,14 +3,19 @@
 #include "FND.h"
 #include "DEBUG.h"
 #include "ANALOG.h"
+#include "button.h"
 ///////////////////////
 
 //////////////////////
 fnd display(13, 12, 11);
 debug dbg(9600);
 analog temp(A0);
+button ir_inside(13);
+button ir_outside(12);
 
-
+ 
+ircut myIRCut;
+ircut::state st;
 //_____________________________________________________________________________________________________________________________________________________________________
 
 /**
@@ -30,15 +35,55 @@ ircut::ircut(){
  * @return Description of return value
  */
 void ircut::begin(void){
-      // temp.begin();
   dbg.begin();
   display.begin();
+  ir_inside.begin();
+  ir_outside.begin();
+  st = ircut::start;
 }
 //_____________________________________________________________________________________________________________________________________________________________________
   void ircut::FSM_Handler(void){
-    int val=temp.GetValue();
-    dbg.show(val);
-    delay(100); // Update every 100ms
+
+    switch (st) {
+    case ircut::start:
+      dbg.show("the system is starting....");
+      st=ircut::wait_for_trigger;
+    break;
+    ////////////////////
+    case ircut::wait_for_trigger:
+      //  dbg.show("the system is wait_for_trigger....");
+      if(ir_inside.triggered()){
+        dbg.show("ir inside button triggered");
+      }
+
+      if(ir_outside.triggered()){
+        dbg.show("ir outside button triggered");
+      }
+
+
+      // st=ircut::wait_for_release;
+    break;
+    ///////////////////
+    case ircut::wait_for_release:
+
+
+    break;
+    ///////////////////
+    case ircut::status_send_log:
+
+
+    break;
+    ///////////////////
+    default:
+    break;
+    ////////////////////
+    }
+
+
+
+    // int val=temp.GetValue();
+    // dbg.show(val);
+    // delay(100); // Update every 100ms
   }
 //_____________________________________________________________________________________________________________________________________________________________________
 

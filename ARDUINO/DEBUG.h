@@ -13,9 +13,4 @@ class debug{
     void show(String msg);
     void show(int val);
 };
-
-
-
-
-
 #endif
