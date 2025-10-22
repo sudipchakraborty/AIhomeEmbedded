@@ -13,5 +13,7 @@ class debug{
     void show(String msg);
     void print(String msg);
     void show(int val);
+    template <typename T>
+    void printArray(const T arr[], size_t size);
 };
 #endif

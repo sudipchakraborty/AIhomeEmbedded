@@ -7,26 +7,18 @@
 #include "LED.h"
 #include "RELAY.h"
 #include "StatusBlink.h"
-#include "TimeModule.h"
-///////////////////////
-
+#include "Time.h"
 //////////////////////
 debug   dbg(9600);
-
 button  ir_inside(12);
 button  ir_outside(13);
-
 led led_in(11);
 led led_out(10);
-
 relay bulb(9);
-
 StatusBlink stbl;
-
 ircut myIRCut;
 ircut::state st;
-
-TimeModule timer;
+Time timer;
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
  * @brief Brief description of the function/class
@@ -54,25 +46,29 @@ void ircut::begin(void){
   stbl.init(8,100000);
   st = ircut::start;
   myIRCut.event_clear();
+  timer.set_time(5000);
 }
 //_____________________________________________________________________________________________________________________________________________________________________
   void ircut::FSM_Handler(void){
-   
-    stbl.blink();
-    Sensor_Read();
+
+      stbl.blink();
+      Sensor_Read();
 
       if(myIRCut.event_val !=0)
-      {
-        myIRCut.v_delay_reg++;
-        if(myIRCut.v_delay_reg>100000)
+      {  
+        timer.time_start();
+        if(timer.timeOut())
         {
             dbg.print("Time Out occured");
             myIRCut.event_clear();
-            Serial.print("event_count=");    Serial.println(myIRCut.event_count);
-            Serial.print("event_val=");      Serial.println(myIRCut.event_val);
-            myIRCut.v_delay_reg=0;
+            timer.time_start();
             dbg.print("============================");
         }
+        else{
+        }
+      }
+      else{
+        timer.time_reset();
       }
 
     if(myIRCut.sensor_state_backup==myIRCut.sensor_state_current) return;
@@ -135,16 +131,6 @@ void ircut::event_clear(void){
       myIRCut.sensor_state_current=0x00;
       if(ir_outside.triggered()) myIRCut.sensor_state_current |=0x01;
       if(ir_inside.triggered())  myIRCut.sensor_state_current |=0x02; 
-}
-//_____________________________________________________________________________________________________________________________________________________________________
-template <typename T>
-void ircut:: printArray(const T arr[], size_t size) {
-    Serial.print("[ ");
-    for (size_t i = 0; i < size; i++) {
-        Serial.print(arr[i]);
-        if (i < size - 1) Serial.print(", ");
-    }
-    Serial.println(" ]");
 }
 //_____________________________________________________________________________________________________________________________________________________________________
 

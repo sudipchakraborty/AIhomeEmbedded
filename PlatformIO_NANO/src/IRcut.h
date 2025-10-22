@@ -22,8 +22,6 @@ class ircut{
     void begin(void);   
     void FSM_Handler(void);
     void Sensor_Read(void);
-    template <typename T>
-    void printArray(const T arr[], size_t size);
 
   enum state {
     start,
