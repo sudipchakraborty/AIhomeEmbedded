@@ -22,7 +22,9 @@ class ircut{
     void begin(void);   
     void FSM_Handler(void);
     void Sensor_Read(void);
-
+    void CheckTimeOut(void);
+    void LoadTrigger(void); 
+    void Check_Sensor(void);
   enum state {
     start,
     idle,
