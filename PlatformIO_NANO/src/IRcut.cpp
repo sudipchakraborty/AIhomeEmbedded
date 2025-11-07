@@ -1,23 +1,27 @@
 #include <Arduino.h>
 #include "IRcut.h"
-#include "FND.h"
-#include "DEBUG.h"
-#include "ANALOG.h"
+#include "RELAY.h"
 #include "button.h"
 #include "LED.h"
-#include "RELAY.h"
+#include "DEBUG.h"
 #include "StatusBlink.h"
 #include "Time.h"
 //////////////////////
 debug   dbg(9600);
-button  ir_inside(12);
-button  ir_outside(13);
-led led_in(11);
-led led_out(10);
-relay bulb(9);
+
+button ldr_inside(10);
+button ldr_outside(9);
+
+led led_inside(12,LOW);
+led led_Outside(11,LOW);
+
+relay rly_inside(2);
+relay rly_outside(3);
+
 StatusBlink stbl;
 ircut myIRCut;
 ircut::state st;
+
 Time timer;
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
@@ -38,12 +42,11 @@ ircut::ircut(){
  */
 void ircut::begin(void){
   dbg.begin();
-  ir_inside.begin();
-  ir_outside.begin();
-  led_in.begin();
-  led_out.begin();
-  bulb.begin();
-  stbl.init(8,100000);
+  ldr_inside.begin();
+  led_Outside.begin();
+  led_inside.begin();
+  led_inside.begin();
+  stbl.init(13,5000);
   st = ircut::start;
   myIRCut.event_clear();
   timer.set_time(5000);
@@ -72,15 +75,106 @@ void ircut::event_clear(void){
 }
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
- * @brief this function clear the event array. it set all four to zero
+ * @brief this function read the LDR sensor status from the controller port. the status
+ * is available inside  sensor_state_current registor.
  * @param void
  * @return void
  */
   void ircut::Sensor_Read(void){
       myIRCut.sensor_state_current=0x00;
-      if(ir_outside.triggered()) myIRCut.sensor_state_current |=0x01;
-      if(ir_inside.triggered())  myIRCut.sensor_state_current |=0x02; 
+      if(ldr_outside.triggered()) 
+      {
+        myIRCut.sensor_state_current |=0x01;
+        led_Outside.on();
+      }
+      else
+      {
+        led_Outside.off();
+      }
+      ///////////////////////////
+      if(ldr_inside.triggered()) 
+      {
+        myIRCut.sensor_state_current |=0x02; 
+        led_inside.on();
+      }
+      else{
+        led_inside.off();
+      }
 }
+//_____________________________________________________________________________________________________________________________________________________________________
+/**
+ * @brief this fnction compare the sensor status between previous and current status register.
+ * @param void
+ * @return void
+ */
+  void ircut::Check_Sensor(void)
+  {
+    if(myIRCut.sensor_state_backup==myIRCut.sensor_state_current) return;
+   
+    byte prev,curr;
+    prev=myIRCut.sensor_state_backup  & 0x01;   // 0x01= LDR outside
+    curr=myIRCut.sensor_state_current & 0x01;
+    if(prev !=curr)
+    {
+        if(curr==0x01) 
+        {
+          myIRCut.event_val += (myIRCut.event_count*1);
+           Serial.println("LDR outside triggered..");   
+        }
+        if(curr==0x00)  
+        {
+            myIRCut.event_val += (myIRCut.event_count*2);
+            Serial.println("LDR outside Released.."); 
+        }
+    }
+    ///////////////
+    prev=myIRCut.sensor_state_backup  & 0x02;   // 0x02=LDR inside
+    curr=myIRCut.sensor_state_current & 0x02;
+    if(prev !=curr)
+    {
+        if(curr==0x02)  
+        {
+          myIRCut.event_val += (myIRCut.event_count*3);
+           Serial.println("LDR Inside triggered.."); 
+        }
+        if(curr==0x00)  
+        {
+          myIRCut.event_val += (myIRCut.event_count*4);
+           Serial.println("LDR inside  released.."); 
+        }
+    }     
+    myIRCut.event_count++;
+
+    myIRCut.sensor_state_backup=myIRCut.sensor_state_current;
+    //  Serial.print("event_count=");    Serial.println(myIRCut.event_count);
+    //  Serial.print("event_val=");      Serial.println(myIRCut.event_val);
+  }
+//_____________________________________________________________________________________________________________________________________________________________________
+/**
+ * @brief this function monitor the status register. if the sensor event status register is healthy
+ * means 29 then trigger the load on and if the value is 25 then load make  off.
+ * @param void
+ * @return void
+ */
+  void ircut::LoadTrigger(void)
+  {
+      if(myIRCut.event_val==29)
+      {
+        Serial.println("Got Healthy status=29..Triggering the load on");
+        rly_inside.on();
+        rly_outside.on();
+        myIRCut.event_clear();
+        return;
+      }
+      if(myIRCut.event_val==25)
+      {
+        Serial.println("Got Healthy status=25..Triggering the load off");
+          rly_inside.off();
+          rly_outside.off();
+          myIRCut.event_clear();    
+         return;
+      }
+  }
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
  * @brief this function clear the event array. it set all four to zero
@@ -105,59 +199,5 @@ void ircut::event_clear(void){
       else{
         timer.time_reset();
       }
-  }
-//_____________________________________________________________________________________________________________________________________________________________________
-/**
- * @brief this function clear the event array. it set all four to zero
- * @param void
- * @return void
- */
-  void ircut::LoadTrigger(void)
-  {
-      if(myIRCut.event_val==29)
-      {
-        bulb.on();
-        myIRCut.event_clear();
-        return;
-      }
-      if(myIRCut.event_val==25)
-      {
-        bulb.off();
-         myIRCut.event_clear();
-         
-         return;
-      }
-  }
-//_____________________________________________________________________________________________________________________________________________________________________
-/**
- * @brief this function clear the event array. it set all four to zero
- * @param void
- * @return void
- */
-  void ircut::Check_Sensor(void)
-  {
-    if(myIRCut.sensor_state_backup==myIRCut.sensor_state_current) return;
-   
-    byte prev,curr;
-    prev=myIRCut.sensor_state_backup  & 0x01;
-    curr=myIRCut.sensor_state_current & 0x01;
-    if(prev !=curr)
-    {
-        if(curr==0x01)  myIRCut.event_val += (myIRCut.event_count*1);
-        if(curr==0x00)  myIRCut.event_val += (myIRCut.event_count*2);
-    }
-    ///////////////
-    prev=myIRCut.sensor_state_backup  & 0x02;
-    curr=myIRCut.sensor_state_current & 0x02;
-    if(prev !=curr)
-    {
-        if(curr==0x02)  myIRCut.event_val += (myIRCut.event_count*3);
-        if(curr==0x00)  myIRCut.event_val += (myIRCut.event_count*4);
-    }     
-    myIRCut.event_count++;
-
-     myIRCut.sensor_state_backup=myIRCut.sensor_state_current;
-     Serial.print("event_count=");    Serial.println(myIRCut.event_count);
-     Serial.print("event_val=");      Serial.println(myIRCut.event_val);
   }
 //_____________________________________________________________________________________________________________________________________________________________________

@@ -11,6 +11,16 @@
 }
 //___________________________________________________________________________________________________________________________________________
 /**
+ * @brief this is the constructor of the led module
+ * @param led_pin controller pin to connect led
+ * @return none
+ */
+  led::led(byte led_pin, bool logic_state){
+  pin=led_pin;
+  logic=logic_state;
+}
+//___________________________________________________________________________________________________________________________________________
+/**
  * @brief set the pin as output
  * @param none
  * @return none
@@ -25,7 +35,8 @@
  * @return none
  */
   void led::on(void){
-  digitalWrite(pin, HIGH);
+  if(led::logic==1) digitalWrite(pin, HIGH);
+  else         digitalWrite(pin, LOW);
   }
 //___________________________________________________________________________________________________________________________________________
 /**
@@ -34,7 +45,8 @@
  * @return none
  */
   void led::off(void){
-  digitalWrite(pin, LOW);
+  if(led::logic==1) digitalWrite(pin, LOW);
+  else         digitalWrite(pin, HIGH);
   }
 //___________________________________________________________________________________________________________________________________________
 /**
@@ -47,6 +59,21 @@
   digitalWrite(pin, pinState);
 }
 //___________________________________________________________________________________________________________________________________________
+/**
+ * @brief this function create toggle with custom delay
+ * @param delayVal  put delay value to get toggle delay
+ * @return none
+ */
+  void led::toggle(long delayVal){
+  pinState = !pinState; 
+  digitalWrite(pin, pinState);
+  delay(delayVal);
+}
+
+    
+
+
+
 /**
  * @brief this is the constructor of the led module
  * @param led_pin controller pin to connect led
