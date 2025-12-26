@@ -25,6 +25,11 @@ class ircut{
     void CheckTimeOut(void);
     void LoadTrigger(void); 
     void Check_Sensor(void);
+    void PWM_setup(void);
+    void PWM_burst_task(void);
+    void setup_timer2_38kHz(void);
+    void setup_timer1_burst(void);
+    void device_self_test(void);
   enum state {
     start,
     idle,

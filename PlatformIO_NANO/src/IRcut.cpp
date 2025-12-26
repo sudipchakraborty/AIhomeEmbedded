@@ -23,6 +23,15 @@ ircut myIRCut;
 ircut::state st;
 
 Time timer;
+
+  // Burst timing (milliseconds)
+#include <avr/interrupt.h>
+
+#define IR_PIN 3   // OC2B (Arduino Nano)
+
+#define IR_ON_MS   5
+#define IR_OFF_MS  15
+
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
  * @brief Brief description of the function/class
@@ -50,6 +59,14 @@ void ircut::begin(void){
   st = ircut::start;
   myIRCut.event_clear();
   timer.set_time(5000);
+
+  device_self_test();
+
+  // PWM_setup();
+  // setup_timer2_38kHz();
+  // setup_timer1_burst();
+  // sei(); // enable global interrupts
+
 }
 //_____________________________________________________________________________________________________________________________________________________________________
   void ircut::FSM_Handler(void)
@@ -59,6 +76,8 @@ void ircut::begin(void){
       Sensor_Read();
       Check_Sensor();
       LoadTrigger(); 
+
+      // PWM_burst_task();
     }
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
@@ -201,3 +220,178 @@ void ircut::event_clear(void){
       }
   }
 //_____________________________________________________________________________________________________________________________________________________________________
+void ircut:: device_self_test(void)
+{
+    //////////////////
+    rly_inside.on();
+    delay(500);
+    rly_inside.on();
+    delay(500);
+    rly_inside.on();
+    delay(500);
+    ///////////////////
+    rly_outside.on();
+    delay(500);
+    rly_outside.on();
+    delay(500);
+    rly_outside.on();
+    delay(500);
+    ///////////////////
+
+       
+
+
+
+
+}
+// Continuous High-Power IR Burst (38kHz Background PWM)
+// Hardware: Arduino Nano, 2N2222, IR LED
+// Wiring: Base of Transistor connected to Pin D3 via 220 ohm resistor
+
+// const byte IR_PIN = 3; // Hardwired to Timer 2 Output B
+
+void ircut::PWM_setup() {
+
+   pinMode(IR_PIN, OUTPUT);
+
+  // Stop Timer2
+  TCCR2A = 0;
+  TCCR2B = 0;
+
+  // Fast PWM, TOP = OCR2A
+  TCCR2A = _BV(WGM21) | _BV(WGM20);
+  TCCR2B = _BV(WGM22) | _BV(CS21); // Prescaler = 8
+
+  // 38 kHz
+  OCR2A = 51;
+  OCR2B = 17; // ~33% duty (better for IR LED & transistor)
+
+  // IMPORTANT:
+  // DO NOT enable COM2B1 here (PWM output disabled initially)
+
+
+
+
+  // // 1. Set the pin to Output
+  // pinMode(IR_PIN, OUTPUT);
+
+  // // 2. Configure Timer 2 for 38kHz PWM (Fast PWM Mode)
+  // // This interacts directly with the microcontroller hardware.
+  // // Once set, the pin pulses automatically without stopping.
+  
+  // // Clear Timer Control Registers
+  // TCCR2A = 0;
+  // TCCR2B = 0;
+
+  // // TCCR2A settings:
+  // // COM2B1 = 1: Clear OC2B on Compare Match (non-inverting mode)
+  // // WGM21 + WGM20 = 1: Fast PWM Mode
+  // TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
+
+  // // TCCR2B settings:
+  // // WGM22 = 1: Fast PWM Mode (continued)
+  // // CS21  = 1: Prescaler = 8 (16MHz / 8 = 2MHz counter)
+  // TCCR2B = _BV(WGM22) | _BV(CS21);
+
+  // // OCR2A (Top Limit): Determines Frequency
+  // // Formula: (16MHz / (Prescaler * TargetFreq)) - 1
+  // // (16,000,000 / (8 * 38,000)) - 1 = 51.6 -> 52
+  // OCR2A = 51; 
+
+  // // OCR2B (Duty Cycle): Determines brightness/power
+  // // 50% of OCR2A is usually best for IR data, but for raw power:
+  // // 26 = 50% Duty Cycle
+  // OCR2B = 17; 
+
+  // // --- PWM IS NOW RUNNING ON PIN 3 ---
+  
+  // // Optional: Start Serial to prove the loop is free
+  // // Serial.begin(9600);
+
+
+
+
+  /////////////////
+
+}
+
+// void ircut::PWM_burst_task() {
+//   static unsigned long lastToggle = 0;
+//   static bool pwmEnabled = false;
+
+//   unsigned long now = millis();
+
+//   if (pwmEnabled) {
+//     // PWM currently ON
+//     if (now - lastToggle >= IR_BURST_ON_MS) {
+//       // Disable PWM output (carrier OFF)
+//       TCCR2A &= ~_BV(COM2B1);
+//       digitalWrite(IR_PIN, LOW); // ensure clean LOW
+//       pwmEnabled = false;
+//       lastToggle = now;
+//     }
+//   } else {
+//     // PWM currently OFF
+//     if (now - lastToggle >= IR_BURST_OFF_MS) {
+//       // Enable PWM output (carrier ON)
+//       TCCR2A |= _BV(COM2B1); // connect OC2B to timer
+//       pwmEnabled = true;
+//       lastToggle = now;
+//     }
+//   }
+// }
+
+
+void ircut::setup_timer2_38kHz(void) {
+  pinMode(IR_PIN, OUTPUT);
+
+  TCCR2A = 0;
+  TCCR2B = 0;
+
+  // Fast PWM, TOP = OCR2A
+  TCCR2A = _BV(WGM21) | _BV(WGM20);
+  TCCR2B = _BV(WGM22) | _BV(CS21); // prescaler = 8
+
+  OCR2A = 51;   // 38 kHz
+  OCR2B = 17;   // ~33% duty
+
+  // PWM output disabled initially
+  TCCR2A &= ~_BV(COM2B1);
+}
+
+
+void ircut::setup_timer1_burst(void) {
+  TCCR1A = 0;
+  TCCR1B = 0;
+
+  // CTC mode
+  TCCR1B |= _BV(WGM12);
+
+  // Prescaler = 64 → 16MHz / 64 = 250 kHz
+  TCCR1B |= _BV(CS11) | _BV(CS10);
+
+  // Start with ON duration
+  OCR1A = IR_ON_MS * 250 - 1;
+
+  TIMSK1 |= _BV(OCIE1A); // enable compare interrupt
+}
+
+
+ISR(TIMER1_COMPA_vect) {
+  static bool ir_on = false;
+
+  if (ir_on) {
+    // Turn IR OFF
+    TCCR2A &= ~_BV(COM2B1);  // disconnect OC2B
+    digitalWrite(IR_PIN, LOW);
+
+    OCR1A = IR_OFF_MS * 250 - 1;
+    ir_on = false;
+  } else {
+    // Turn IR ON
+    TCCR2A |= _BV(COM2B1);   // connect OC2B
+
+    OCR1A = IR_ON_MS * 250 - 1;
+    ir_on = true;
+  }
+}
