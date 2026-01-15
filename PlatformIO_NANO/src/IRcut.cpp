@@ -87,9 +87,9 @@ void ircut::begin(void){
     {
       Sensor_Read();
       Check_Sensor();
-      // LoadTrigger(); 
-      // stbl.blink();
-      // CheckTimeOut();
+      LoadTrigger(); 
+      stbl.blink();
+      CheckTimeOut();
     }
     else{
       sensor_health_check();
