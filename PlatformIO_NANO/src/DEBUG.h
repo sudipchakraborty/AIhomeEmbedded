@@ -15,5 +15,6 @@ class debug{
     void show(int val);
     template <typename T>
     void printArray(const T arr[], size_t size);
+    byte enable=true;
 };
 #endif

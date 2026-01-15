@@ -4,6 +4,13 @@
 button::button(char sw_pin)  // Constructor
 {   
     pin=sw_pin;
+    logic=0;
+}
+//__________________________________________________________________________________________________________________________________________________________________
+button::button(char sw_pin, bool state_logic)  // Constructor
+{   
+    pin=sw_pin;
+    logic=state_logic;
 }
 //__________________________________________________________________________________________________________________________________________________________________
 void button::begin()
@@ -13,26 +20,30 @@ void button::begin()
 //__________________________________________________________________________________________________________________________________________________________________
  bool button::pressed()
 { 
-  if(digitalRead(pin))
-  {
-    return false;
-  }
-  else
-  {
-   return true; 
-  }
+  if (logic==1)
+    {
+      if(digitalRead(pin)) return true;
+      else return false; 
+    }
+    else
+    {
+      if(digitalRead(pin)) return false;
+      else return true; 
+    }
 }
 //__________________________________________________________________________________________________________________________________________________________________
 bool button::triggered(void)
 { 
-  if(digitalRead(pin))
-  {
-    return false;
-  }
-  else
-  {
-   return true; 
-  }
+   if (logic==1)
+    {
+      if(digitalRead(pin)) return true;
+      else return false; 
+    }
+    else
+    {
+      if(digitalRead(pin)) return false;
+      else return true; 
+    }
 }
 //__________________________________________________________________________________________________________________________________________________________________
    

@@ -6,11 +6,13 @@
 #include "DEBUG.h"
 #include "StatusBlink.h"
 #include "Time.h"
+#include "global_var.h"
 //////////////////////
-debug   dbg(9600);
 
-button ldr_inside(10);
-button ldr_outside(9);
+debug   dbg(115200);
+
+button IR_inside(10,1);
+button IR_outside(9,1);
 
 led led_inside(12,LOW);
 led led_Outside(11,LOW);
@@ -51,16 +53,26 @@ ircut::ircut(){
  */
 void ircut::begin(void){
   dbg.begin();
-  ldr_inside.begin();
+  dbg.print("\n\n\r///////////////<NEW SEASON>/////////////////////////");
+  IR_inside.begin();
   led_Outside.begin();
+  
   led_inside.begin();
   led_inside.begin();
+
+  rly_inside.begin();
+  rly_outside.begin();
+
   stbl.init(13,5000);
   st = ircut::start;
   myIRCut.event_clear();
   timer.set_time(5000);
 
+
   device_self_test();
+  dbg.print("Device Initialized Completed...");
+  dbg.print("IR Cut Controller Started...");
+  dbg.print("-----------------------------------------------");
 
   // PWM_setup();
   // setup_timer2_38kHz();
@@ -71,14 +83,27 @@ void ircut::begin(void){
 //_____________________________________________________________________________________________________________________________________________________________________
   void ircut::FSM_Handler(void)
   {
-      stbl.blink();
-      CheckTimeOut();
+    if(Sensor_Health==Good)
+    {
       Sensor_Read();
       Check_Sensor();
-      LoadTrigger(); 
-
-      // PWM_burst_task();
+      // LoadTrigger(); 
+      // stbl.blink();
+      // CheckTimeOut();
     }
+    else{
+      sensor_health_check();
+      if(Sensor_Health==Good)
+      {
+        dbg.print("Sensor Health OK..resuming normal operation");
+        delay(500);
+      }
+      else
+        dbg.print("Sensor Health BAD..check the sensors");
+        delay(500);
+    }
+
+  }
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
  * @brief this function clear the event array. it set all four to zero
@@ -101,7 +126,7 @@ void ircut::event_clear(void){
  */
   void ircut::Sensor_Read(void){
       myIRCut.sensor_state_current=0x00;
-      if(ldr_outside.triggered()) 
+      if(IR_outside.triggered()) 
       {
         myIRCut.sensor_state_current |=0x01;
         led_Outside.on();
@@ -111,7 +136,7 @@ void ircut::event_clear(void){
         led_Outside.off();
       }
       ///////////////////////////
-      if(ldr_inside.triggered()) 
+      if(IR_inside.triggered()) 
       {
         myIRCut.sensor_state_current |=0x02; 
         led_inside.on();
@@ -138,7 +163,7 @@ void ircut::event_clear(void){
         if(curr==0x01) 
         {
           myIRCut.event_val += (myIRCut.event_count*1);
-           Serial.println("LDR outside triggered..");   
+          dbg.print("LDR outside triggered..");
         }
         if(curr==0x00)  
         {
@@ -154,19 +179,19 @@ void ircut::event_clear(void){
         if(curr==0x02)  
         {
           myIRCut.event_val += (myIRCut.event_count*3);
-           Serial.println("LDR Inside triggered.."); 
+          dbg.print("LDR Inside triggered.."); 
         }
         if(curr==0x00)  
         {
           myIRCut.event_val += (myIRCut.event_count*4);
-           Serial.println("LDR inside  released.."); 
+          dbg.print("LDR inside  released.."); 
         }
     }     
     myIRCut.event_count++;
 
     myIRCut.sensor_state_backup=myIRCut.sensor_state_current;
-    //  Serial.print("event_count=");    Serial.println(myIRCut.event_count);
-    //  Serial.print("event_val=");      Serial.println(myIRCut.event_val);
+    // Serial.print("event_count=");    Serial.println(myIRCut.event_count);
+    // Serial.print("event_val=");      Serial.println(myIRCut.event_val);
   }
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
@@ -222,28 +247,82 @@ void ircut::event_clear(void){
 //_____________________________________________________________________________________________________________________________________________________________________
 void ircut:: device_self_test(void)
 {
+  /**
+ * @brief this is the device self test function. it will test all the major components of the device
+ * @param void
+ * @return void
+ */
     //////////////////
-    rly_inside.on();
-    delay(500);
-    rly_inside.on();
-    delay(500);
-    rly_inside.on();
-    delay(500);
+    dbg.print("Device Self Test Started...");
+     delay(2000);
+
+      sensor_health_check();
+      ////////////////////////////
+      dbg.print("Inside Relay Test...");
+      rly_inside.on();
+      delay(500);
+      rly_inside.off();
+      delay(500);
+      ///////////////////
+      dbg.print("Outside Relay Test...");
+      rly_outside.on();
+      delay(500);
+      rly_outside.off();
+      delay(500);
     ///////////////////
-    rly_outside.on();
-    delay(500);
-    rly_outside.on();
-    delay(500);
-    rly_outside.on();
-    delay(500);
-    ///////////////////
-
-       
-
-
-
-
 }
+//_____________________________________________________________________________________________________________________________________________________________________
+ ///////////////////
+ void ircut:: sensor_health_check(void){
+  /**
+ * @brief  this function check the health of the IR sensors
+ * @param void
+ * @return void
+ */
+  if(IR_outside.triggered()) 
+      {  
+        dbg.print("Outside IR Sensor Error or IR light not detected...");
+        led_Outside.off();
+        OutSide_sensor_error=true;
+      }
+      else
+      {
+        dbg.print("Outside IR Sensor OK and sensing the IR light...");
+        led_Outside.on();
+        OutSide_sensor_error=false;
+      }
+      delay(500);
+      ///////////////////////////
+      if(IR_inside.triggered()) 
+      {
+        dbg.print("Inside IR Sensor Error or IR light not detected...");
+        led_inside.off();
+        InSide_sensor_error=true;
+      }
+      else{
+        dbg.print("Inside IR Sensor OK and sensing the IR light...");
+        led_inside.on();
+        InSide_sensor_error=false;
+      }
+      delay(500);
+      ////////////////////////////
+      dbg.print("Evaluating Sensor Health...");
+      if (OutSide_sensor_error || InSide_sensor_error)
+      {
+        Sensor_Health=false;
+        dbg.print("Sensor Health: BAD");
+      }
+      else{
+        Sensor_Health=true;
+        dbg.print("Sensor Health: OK");
+      }
+      delay(500);
+    }
+//_____________________________________________________________________________________________________________________________________________________________________
+
+
+
+
 // Continuous High-Power IR Burst (38kHz Background PWM)
 // Hardware: Arduino Nano, 2N2222, IR LED
 // Wiring: Base of Transistor connected to Pin D3 via 220 ohm resistor

@@ -30,6 +30,10 @@ class ircut{
     void setup_timer2_38kHz(void);
     void setup_timer1_burst(void);
     void device_self_test(void);
+    void sensor_health_check(void);
+    bool OutSide_sensor_error=true;
+    bool InSide_sensor_error=true;
+    bool Sensor_Health=false;
   enum state {
     start,
     idle,

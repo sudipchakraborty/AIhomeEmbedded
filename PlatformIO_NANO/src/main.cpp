@@ -1,7 +1,7 @@
 // /////////////
 #define brd_IrCut
 // #define BRD_TimerModule
-// /////////////
+///////////////
 
 
 
@@ -10,13 +10,13 @@
     #include <Arduino.h>
     #include  "IRcut.h"
     ircut ir;   
-    void setup() 
+    void setup()
     {
-    ir.begin();
+        ir.begin();
     }
     void loop() 
     {
-    ir.FSM_Handler();
+        ir.FSM_Handler();
     }
 #endif
 ////////////////////////////////////////////////////////////////////////////////////////////////
