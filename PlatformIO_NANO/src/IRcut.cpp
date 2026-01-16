@@ -7,15 +7,16 @@
 #include "StatusBlink.h"
 #include "Time.h"
 #include "global_var.h"
+#include "EventsSEQ.h"
 //////////////////////
 
 debug   dbg(19200);
 
-// button IR_inside(10,1);
-// button IR_outside(9,1);
+button IR_inside(10,1);
+button IR_outside(9,1);
 
-button IR_inside(10,0);
-button IR_outside(9,0);
+// button IR_inside(10,0);
+// button IR_outside(9,0);
 
 led led_inside(12,LOW);
 led led_Outside(11,LOW);
@@ -26,6 +27,8 @@ relay rly_outside(3);
 StatusBlink stbl;
 ircut myIRCut;
 ircut::state st;
+
+EventsSEQ myEventsSEQ;
 
 Time timer;
 
@@ -71,6 +74,7 @@ void ircut::begin(void){
   myIRCut.event_clear();
   timer.set_time(5000);
 
+  myEventsSEQ.begin();
 
   device_self_test();
   dbg.print("Device Initialized Completed...");
@@ -88,11 +92,18 @@ void ircut::begin(void){
   {
     if(Sensor_Health==Good)
     {
+      
       Sensor_Read();
-      Check_Sensor();
-      LoadTrigger(); 
-      stbl.blink();
-      CheckTimeOut();
+
+      if(myIRCut.sensor_state_backup!=myIRCut.sensor_state_current) 
+      {
+        Check_Sensor2();
+        String s=myEventsSEQ.get_buffer_as_string();
+        dbg.print("Event Buffer: "+s);
+
+        // LoadTrigger(); 
+        stbl.blink();
+      }
     }
     else{
       sensor_health_check();
@@ -105,7 +116,7 @@ void ircut::begin(void){
         dbg.print("Sensor Health BAD..check the sensors");
         delay(500);
     }
-
+          CheckTimeOut();
   }
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
@@ -128,14 +139,15 @@ void ircut::event_clear(void){
  * @return void
  */
   void ircut::Sensor_Read(void){
-      myIRCut.sensor_state_current=0x00;
+   
       if(IR_outside.triggered()) 
       {
-        myIRCut.sensor_state_current |=0x01;
+        myIRCut.sensor_state_current|=0x01;
         led_Outside.on();
       }
       else
       {
+        myIRCut.sensor_state_current &=0xFE;
         led_Outside.off();
       }
       ///////////////////////////
@@ -145,6 +157,7 @@ void ircut::event_clear(void){
         led_inside.on();
       }
       else{
+        myIRCut.sensor_state_current &=0xFD;
         led_inside.off();
       }
 }
@@ -198,6 +211,48 @@ void ircut::event_clear(void){
   }
 //_____________________________________________________________________________________________________________________________________________________________________
 /**
+ * @brief this fnction compare the sensor status between previous and current status register.
+ * @param void
+ * @return void
+ */
+  void ircut::Check_Sensor2(void)
+  {
+    byte prev,curr;
+    prev=myIRCut.sensor_state_backup  & 0x01;   // 0x01= LDR outside
+    curr=myIRCut.sensor_state_current & 0x01;
+    if(prev !=curr)
+    {
+        if(curr==0x01) 
+        {
+          myEventsSEQ.push(Out_ON); 
+          dbg.print("LDR outside triggered..");
+        }
+        if(curr==0x00)  
+        {
+            myEventsSEQ.push(Out_OFF);
+            Serial.println("LDR outside Released.."); 
+        }
+    }
+    ///////////////
+    prev=myIRCut.sensor_state_backup  & 0x02;   // 0x02=LDR inside
+    curr=myIRCut.sensor_state_current & 0x02;
+    if(prev !=curr)
+    {
+        if(curr==0x02)  
+        {
+          myEventsSEQ.push(In_ON);
+          dbg.print("LDR Inside triggered.."); 
+        }
+        if(curr==0x00)  
+        {
+          myEventsSEQ.push(In_OFF);
+          dbg.print("LDR inside  released.."); 
+        }
+    }     
+    myIRCut.sensor_state_backup=myIRCut.sensor_state_current;
+  }
+//_____________________________________________________________________________________________________________________________________________________________________
+/**
  * @brief this function monitor the status register. if the sensor event status register is healthy
  * means 29 then trigger the load on and if the value is 25 then load make  off.
  * @param void
@@ -230,13 +285,14 @@ void ircut::event_clear(void){
  */
   void ircut::CheckTimeOut(void)
   {
-    if(myIRCut.event_val !=0)
+    if(myEventsSEQ.index !=0)
       {  
         timer.time_start();
         if(timer.timeOut())
         {
             dbg.print("Time Out occured");
-            myIRCut.event_clear();
+            // myIRCut.event_clear();
+            myEventsSEQ.buffer_reset();
             timer.time_start();
             dbg.print("============================");
         }
@@ -477,3 +533,31 @@ ISR(TIMER1_COMPA_vect) {
     ir_on = true;
   }
 }
+//_____________________________________________________________________________________________________________________________________________________________________
+
+
+void ircut::setup_timer2_38kHz(void) {
+  pinMode(IR_PIN, OUTPUT);
+
+  TCCR2A = 0;
+  TCCR2B = 0;
+
+  // Fast PWM, TOP = OCR2A
+  TCCR2A = _BV(WGM21) | _BV(WGM20);
+  TCCR2B = _BV(WGM22) | _BV(CS21); // prescaler = 8
+
+  OCR2A = 51;   // 38 kHz
+  OCR2B = 17;   // ~33% duty
+
+  // PWM output disabled initially
+  TCCR2A &= ~_BV(COM2B1);
+}
+
+//_____________________________________________________________________________________________________________________________________________________________________
+void ircut::event_detect(void) {
+  
+}
+//_____________________________________________________________________________________________________________________________________________________________________
+
+// 1324 in
+// 3142 out

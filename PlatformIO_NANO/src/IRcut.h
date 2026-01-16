@@ -14,7 +14,6 @@ class ircut{
     void event_clear(void);
     byte sensor_state_backup;
     byte sensor_state_current;
-
     long v_delay_reg=0;
   public:
     byte FSM;
@@ -25,12 +24,14 @@ class ircut{
     void CheckTimeOut(void);
     void LoadTrigger(void); 
     void Check_Sensor(void);
+    void Check_Sensor2(void);
     void PWM_setup(void);
     void PWM_burst_task(void);
     void setup_timer2_38kHz(void);
     void setup_timer1_burst(void);
     void device_self_test(void);
     void sensor_health_check(void);
+    void event_detect(void);
     bool OutSide_sensor_error=true;
     bool InSide_sensor_error=true;
     bool Sensor_Health=false;
