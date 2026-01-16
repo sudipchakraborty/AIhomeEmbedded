@@ -9,10 +9,13 @@
 #include "global_var.h"
 //////////////////////
 
-debug   dbg(115200);
+debug   dbg(19200);
 
-button IR_inside(10,1);
-button IR_outside(9,1);
+// button IR_inside(10,1);
+// button IR_outside(9,1);
+
+button IR_inside(10,0);
+button IR_outside(9,0);
 
 led led_inside(12,LOW);
 led led_Outside(11,LOW);
